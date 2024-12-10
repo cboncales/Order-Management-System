@@ -91,6 +91,57 @@ AppDataSource.initialize()
             }
         });
     }); });
+    app.get("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+        var product, error_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, productRepository.findOne({
+                            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+                        })];
+                case 1:
+                    product = _a.sent();
+                    if (!product) {
+                        res.status(404).json({ message: "Product not found" });
+                    }
+                    res.send(product);
+                    return [3 /*break*/, 3];
+                case 2:
+                    error_1 = _a.sent();
+                    inspector_1.console.error("Error fetching product:", error_1);
+                    res.status(500).json({ message: "Internal Server Error" });
+                    return [3 /*break*/, 3];
+                case 3: return [2 /*return*/];
+            }
+        });
+    }); });
+    app.put("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+        var product, result, error_2;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, productRepository.findOne({
+                            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+                        })];
+                case 1:
+                    product = _a.sent();
+                    productRepository.merge(product, req.body);
+                    return [4 /*yield*/, productRepository.save(product)];
+                case 2:
+                    result = _a.sent();
+                    res.send(result);
+                    return [3 /*break*/, 4];
+                case 3:
+                    error_2 = _a.sent();
+                    inspector_1.console.error("Error Putting Product", error_2);
+                    res.status(500).json({ message: "Internal Server Error" });
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
+            }
+        });
+    }); });
     // Cast options to PostgresConnectionOptions
     var options = AppDataSource.options;
     inspector_1.console.log("Database:", options.database);

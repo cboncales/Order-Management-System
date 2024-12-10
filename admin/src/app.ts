@@ -47,6 +47,43 @@ AppDataSource.initialize()
       res.send(result);
     });
 
+    app.get(
+      "/api/products/:id",
+      async (req: Request<{ id: string }>, res: Response) => {
+        try {
+          const product = await productRepository.findOne({
+            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+          });
+
+          if (!product) {
+            res.status(404).json({ message: "Product not found" });
+          }
+
+          res.send(product);
+        } catch (error) {
+          console.error("Error fetching product:", error);
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      }
+    );
+
+    app.put(
+      "/api/products/:id",
+      async (req: Request<{ id: string }>, res: Response) => {
+        try {
+          const product = await productRepository.findOne({
+            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+          });
+          productRepository.merge(product, req.body);
+          const result = await productRepository.save(product);
+          res.send(result);
+        } catch (error) {
+          console.error("Error Putting Product", error);
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      }
+    );
+
     // Cast options to PostgresConnectionOptions
     const options = AppDataSource.options as PostgresConnectionOptions;
 
