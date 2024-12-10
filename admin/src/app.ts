@@ -1,75 +1,61 @@
-import * as express from 'express'
-import {Request, Response} from 'express'
-import * as cors from 'cors'
-import {createConnection} from 'typeorm'
-import {Product} from "./entity/product";
-import * as amqp from 'amqplib/callback_api';
+import * as express from "express";
+import * as cors from "cors";
+import { Request, Response } from "express";
+import { DataSource } from "typeorm";
+import { PostgresConnectionOptions } from "typeorm/driver/postgres/PostgresConnectionOptions";
+import { Product } from "./entity/product";
+import { console } from "inspector";
 
-createConnection().then(db => {
+const AppDataSource = new DataSource({
+  type: "postgres",
+  host: "localhost",
+  port: 5432,
+  username: "postgres",
+  password: "2001",
+  database: "it109",
+  synchronize: true,
+  logging: false,
+  entities: ["src/entity/*.js"],
+});
+
+AppDataSource.initialize()
+  .then((db) => {
+    console.log("Connection to PostgreSQL was successful!");
     const productRepository = db.getRepository(Product);
+    const app = express();
 
-    amqp.connect('rabbitmq_url', (error0, connection) => {
-        if (error0) {
-            throw error0
-        }
+    app.use(
+      cors({
+        origin: [
+          "http://localhost:3000",
+          "http://localhost:8080",
+          "http://localhost:4200",
+        ],
+      })
+    );
 
-        connection.createChannel((error1, channel) => {
-            if (error1) {
-                throw error1
-            }
+    app.use(express.json());
 
-            const app = express()
+    app.get("/api/products", async (req: Request, res: Response) => {
+      const products = await productRepository.find();
+      res.json(products);
+    });
 
-            app.use(cors({
-                origin: ['http://localhost:3000', 'http://localhost:8080', 'http://localhost:4200']
-            }))
+    app.post("/api/products", async (req: Request, res: Response) => {
+      const product = productRepository.create(req.body);
+      const result = await productRepository.save(product);
+      res.send(result);
+    });
 
-            app.use(express.json())
+    // Cast options to PostgresConnectionOptions
+    const options = AppDataSource.options as PostgresConnectionOptions;
 
-            app.get('/api/products', async (req: Request, res: Response) => {
-                const products = await productRepository.find()
-                res.json(products)
-            })
+    console.log("Database:", options.database);
+    console.log("Host:", options.host);
 
-            app.post('/api/products', async (req: Request, res: Response) => {
-                const product = await productRepository.create(req.body);
-                const result = await productRepository.save(product)
-                channel.sendToQueue('product_created', Buffer.from(JSON.stringify(result)))
-                return res.send(result)
-            })
-
-            app.get('/api/products/:id', async (req: Request, res: Response) => {
-                const product = await productRepository.findOne(req.params.id)
-                return res.send(product)
-            })
-
-            app.put('/api/products/:id', async (req: Request, res: Response) => {
-                const product = await productRepository.findOne(req.params.id)
-                productRepository.merge(product, req.body)
-                const result = await productRepository.save(product)
-                channel.sendToQueue('product_updated', Buffer.from(JSON.stringify(result)))
-                return res.send(result)
-            });
-
-            app.delete('/api/products/:id', async (req: Request, res: Response) => {
-                const result = await productRepository.delete(req.params.id)
-                channel.sendToQueue('product_deleted', Buffer.from(req.params.id))
-                return res.send(result)
-            })
-
-            app.post('/api/products/:id/like', async (req: Request, res: Response) => {
-                const product = await productRepository.findOne(req.params.id)
-                product.likes++
-                const result = await productRepository.save(product)
-                return res.send(result)
-            })
-
-            console.log('Listening to port: 8000')
-            app.listen(8000)
-            process.on('beforeExit', () => {
-                console.log('closing')
-                connection.close()
-            })
-        })
-    })
-})
+    console.log("Listening to port: 8000");
+    app.listen(8000);
+  })
+  .catch((error) => {
+    console.error("Error connecting to the database:", error);
+  });
