@@ -142,6 +142,44 @@ AppDataSource.initialize()
             }
         });
     }); });
+    app.delete("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+        var result;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, productRepository.delete(req.params.id)];
+                case 1:
+                    result = _a.sent();
+                    res.send(result);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    app.post("/api/products/:id/like", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+        var product, result, error_3;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, productRepository.findOne({
+                            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+                        })];
+                case 1:
+                    product = _a.sent();
+                    product.likes++;
+                    return [4 /*yield*/, productRepository.save(product)];
+                case 2:
+                    result = _a.sent();
+                    res.send(result);
+                    return [3 /*break*/, 4];
+                case 3:
+                    error_3 = _a.sent();
+                    inspector_1.console.error("Error fetching id", error_3);
+                    res.status(500).json({ message: "Internal Server Error" });
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
+            }
+        });
+    }); });
     // Cast options to PostgresConnectionOptions
     var options = AppDataSource.options;
     inspector_1.console.log("Database:", options.database);

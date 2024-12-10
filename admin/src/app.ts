@@ -84,6 +84,28 @@ AppDataSource.initialize()
       }
     );
 
+    app.delete("/api/products/:id", async (req: Request, res: Response) => {
+      const result = await productRepository.delete(req.params.id);
+      res.send(result);
+    });
+
+    app.post(
+      "/api/products/:id/like",
+      async (req: Request<{ id: string }>, res: Response) => {
+        try {
+          const product = await productRepository.findOne({
+            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+          });
+          product.likes++;
+          const result = await productRepository.save(product);
+          res.send(result);
+        } catch (error) {
+          console.error("Error fetching id", error);
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      }
+    );
+
     // Cast options to PostgresConnectionOptions
     const options = AppDataSource.options as PostgresConnectionOptions;
 
