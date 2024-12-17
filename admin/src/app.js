@@ -41,6 +41,7 @@ var cors = require("cors");
 var typeorm_1 = require("typeorm");
 var product_1 = require("./entity/product");
 var inspector_1 = require("inspector");
+var amqp = require("amqplib/callback_api");
 var AppDataSource = new typeorm_1.DataSource({
     type: "postgres",
     host: "localhost",
@@ -56,136 +57,155 @@ AppDataSource.initialize()
     .then(function (db) {
     inspector_1.console.log("Connection to PostgreSQL was successful!");
     var productRepository = db.getRepository(product_1.Product);
-    var app = express();
-    app.use(cors({
-        origin: [
-            "http://localhost:3000",
-            "http://localhost:8080",
-            "http://localhost:4200",
-        ],
-    }));
-    app.use(express.json());
-    app.get("/api/products", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-        var products;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, productRepository.find()];
-                case 1:
-                    products = _a.sent();
-                    res.json(products);
-                    return [2 /*return*/];
+    amqp.connect("amqps://iktihfel:jHZrROaimeQw-oO7GKEoV_jW75YmuVyY@horse.lmq.cloudamqp.com/iktihfel", function (error0, connection) {
+        if (error0) {
+            throw error0;
+        }
+        connection.createChannel(function (error1, channel) {
+            if (error1) {
+                throw error1;
             }
-        });
-    }); });
-    app.post("/api/products", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-        var product, result;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    product = productRepository.create(req.body);
-                    return [4 /*yield*/, productRepository.save(product)];
-                case 1:
-                    result = _a.sent();
-                    res.send(result);
-                    return [2 /*return*/];
-            }
-        });
-    }); });
-    app.get("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-        var product, error_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, productRepository.findOne({
-                            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
-                        })];
-                case 1:
-                    product = _a.sent();
-                    if (!product) {
-                        res.status(404).json({ message: "Product not found" });
+            var app = express();
+            app.use(cors({
+                origin: [
+                    "http://localhost:3000",
+                    "http://localhost:8080",
+                    "http://localhost:4200",
+                ],
+            }));
+            app.use(express.json());
+            app.get("/api/products", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+                var products;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, productRepository.find()];
+                        case 1:
+                            products = _a.sent();
+                            res.json(products);
+                            return [2 /*return*/];
                     }
-                    res.send(product);
-                    return [3 /*break*/, 3];
-                case 2:
-                    error_1 = _a.sent();
-                    inspector_1.console.error("Error fetching product:", error_1);
-                    res.status(500).json({ message: "Internal Server Error" });
-                    return [3 /*break*/, 3];
-                case 3: return [2 /*return*/];
-            }
+                });
+            }); });
+            app.post("/api/products", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+                var product, result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            product = productRepository.create(req.body);
+                            return [4 /*yield*/, productRepository.save(product)];
+                        case 1:
+                            result = _a.sent();
+                            channel.sendToQueue("product_created", Buffer.from(JSON.stringify(result)));
+                            res.send(result);
+                            return [2 /*return*/];
+                    }
+                });
+            }); });
+            app.get("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+                var product, error_1;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            _a.trys.push([0, 2, , 3]);
+                            return [4 /*yield*/, productRepository.findOne({
+                                    where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+                                })];
+                        case 1:
+                            product = _a.sent();
+                            if (!product) {
+                                res.status(404).json({ message: "Product not found" });
+                            }
+                            res.send(product);
+                            return [3 /*break*/, 3];
+                        case 2:
+                            error_1 = _a.sent();
+                            inspector_1.console.error("Error fetching product:", error_1);
+                            res.status(500).json({ message: "Internal Server Error" });
+                            return [3 /*break*/, 3];
+                        case 3: return [2 /*return*/];
+                    }
+                });
+            }); });
+            app.put("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+                var product, result, error_2;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            _a.trys.push([0, 3, , 4]);
+                            return [4 /*yield*/, productRepository.findOne({
+                                    where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+                                })];
+                        case 1:
+                            product = _a.sent();
+                            productRepository.merge(product, req.body);
+                            return [4 /*yield*/, productRepository.save(product)];
+                        case 2:
+                            result = _a.sent();
+                            channel.sendToQueue("product_updated", Buffer.from(JSON.stringify(result)));
+                            res.send(result);
+                            return [3 /*break*/, 4];
+                        case 3:
+                            error_2 = _a.sent();
+                            inspector_1.console.error("Error Putting Product", error_2);
+                            res.status(500).json({ message: "Internal Server Error" });
+                            return [3 /*break*/, 4];
+                        case 4: return [2 /*return*/];
+                    }
+                });
+            }); });
+            app.delete("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+                var productId, result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            productId = parseInt(req.params.id, 10);
+                            return [4 /*yield*/, productRepository.delete(productId)];
+                        case 1:
+                            result = _a.sent();
+                            channel.sendToQueue("product_deleted", Buffer.from(JSON.stringify({ id: productId })));
+                            res.send(result);
+                            return [2 /*return*/];
+                    }
+                });
+            }); });
+            app.post("/api/products/:id/like", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+                var product, result, error_3;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            _a.trys.push([0, 3, , 4]);
+                            return [4 /*yield*/, productRepository.findOne({
+                                    where: { id: parseInt(req.params.id, 10) }, // Convert string to number
+                                })];
+                        case 1:
+                            product = _a.sent();
+                            product.likes++;
+                            return [4 /*yield*/, productRepository.save(product)];
+                        case 2:
+                            result = _a.sent();
+                            res.send(result);
+                            return [3 /*break*/, 4];
+                        case 3:
+                            error_3 = _a.sent();
+                            inspector_1.console.error("Error fetching id", error_3);
+                            res.status(500).json({ message: "Internal Server Error" });
+                            return [3 /*break*/, 4];
+                        case 4: return [2 /*return*/];
+                    }
+                });
+            }); });
+            // Cast options to PostgresConnectionOptions
+            var options = AppDataSource.options;
+            inspector_1.console.log("Database:", options.database);
+            inspector_1.console.log("Host:", options.host);
+            inspector_1.console.log("Listening to port: 8000");
+            app.listen(8000);
+            process.on("beforeExit", function () {
+                inspector_1.console.log("closing");
+                connection.close();
+            });
         });
-    }); });
-    app.put("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-        var product, result, error_2;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 3, , 4]);
-                    return [4 /*yield*/, productRepository.findOne({
-                            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
-                        })];
-                case 1:
-                    product = _a.sent();
-                    productRepository.merge(product, req.body);
-                    return [4 /*yield*/, productRepository.save(product)];
-                case 2:
-                    result = _a.sent();
-                    res.send(result);
-                    return [3 /*break*/, 4];
-                case 3:
-                    error_2 = _a.sent();
-                    inspector_1.console.error("Error Putting Product", error_2);
-                    res.status(500).json({ message: "Internal Server Error" });
-                    return [3 /*break*/, 4];
-                case 4: return [2 /*return*/];
-            }
-        });
-    }); });
-    app.delete("/api/products/:id", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-        var result;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, productRepository.delete(req.params.id)];
-                case 1:
-                    result = _a.sent();
-                    res.send(result);
-                    return [2 /*return*/];
-            }
-        });
-    }); });
-    app.post("/api/products/:id/like", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-        var product, result, error_3;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 3, , 4]);
-                    return [4 /*yield*/, productRepository.findOne({
-                            where: { id: parseInt(req.params.id, 10) }, // Convert string to number
-                        })];
-                case 1:
-                    product = _a.sent();
-                    product.likes++;
-                    return [4 /*yield*/, productRepository.save(product)];
-                case 2:
-                    result = _a.sent();
-                    res.send(result);
-                    return [3 /*break*/, 4];
-                case 3:
-                    error_3 = _a.sent();
-                    inspector_1.console.error("Error fetching id", error_3);
-                    res.status(500).json({ message: "Internal Server Error" });
-                    return [3 /*break*/, 4];
-                case 4: return [2 /*return*/];
-            }
-        });
-    }); });
-    // Cast options to PostgresConnectionOptions
-    var options = AppDataSource.options;
-    inspector_1.console.log("Database:", options.database);
-    inspector_1.console.log("Host:", options.host);
-    inspector_1.console.log("Listening to port: 8000");
-    app.listen(8000);
+    });
 })
     .catch(function (error) {
     inspector_1.console.error("Error connecting to the database:", error);

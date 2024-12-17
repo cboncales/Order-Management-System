@@ -1,9 +1,9 @@
-import { Column, Entity, ObjectIdColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Product {
-  @ObjectIdColumn()
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ unique: true })
   admin_id: number;
